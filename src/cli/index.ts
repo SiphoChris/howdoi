@@ -9,56 +9,45 @@ import {
 } from "../renderer/display.js";
 import { CATEGORY_LABELS, CATEGORY_ORDER } from "../engine/types.js";
 import chalk from "chalk";
-import enquirer from "enquirer";
-
-// enquirer is CJS — pull constructors from the default export
-const { AutoComplete, Select } = enquirer as any;
+import { select, search } from "@inquirer/prompts";
 
 async function promptAutocomplete(
   message: string,
   choices: string[]
 ): Promise<string | null> {
-  const prompt = new AutoComplete({
-    name: "query",
-    message,
-    limit: 10,
-    choices,
-    suggest(input: string, choices: any[]) {
-      if (!input) return choices.slice(0, 10);
-      const lower = input.toLowerCase();
-      return choices.filter((c: any) =>
-        (typeof c === "string" ? c : c.value ?? c.name ?? "")
-          .toLowerCase()
-          .includes(lower)
-      );
-    },
-    footer: chalk.dim("  ↑↓ navigate  Enter select  Ctrl+C exit"),
-  });
-
   try {
-    return await prompt.run();
+    const result = await search({
+      message,
+      source: (input) => {
+        if (!input) return choices.slice(0, 10).map((c) => ({ name: c, value: c }));
+        const lower = input.toLowerCase();
+        return choices
+          .filter((c) => c.toLowerCase().includes(lower))
+          .slice(0, 10)
+          .map((c) => ({ name: c, value: c }));
+      },
+    });
+    return result;
   } catch {
-    // User pressed Ctrl+C or ESC
+    // Ctrl+C
     return null;
   }
 }
 
 async function promptSelect(
   message: string,
-  choices: { name: string; value: string; hint?: string }[]
+  choices: { name: string; value: string; description?: string }[]
 ): Promise<string | null> {
-  const prompt = new Select({
-    name: "choice",
-    message,
-    choices: choices.map((c) => ({
-      name: c.value,
-      message: c.hint ? `${c.name}  ${chalk.dim(c.hint)}` : c.name,
-    })),
-    footer: chalk.dim("  ↑↓ navigate  Enter select  Ctrl+C exit"),
-  });
-
   try {
-    return await prompt.run();
+    const result = await select({
+      message,
+      choices: choices.map((c) => ({
+        name: c.description ? `${c.name}  ${chalk.dim(c.description)}` : c.name,
+        value: c.value,
+      })),
+      pageSize: 12,
+    });
+    return result;
   } catch {
     return null;
   }
@@ -69,17 +58,13 @@ async function guidedMode(engine: SearchEngine): Promise<void> {
 
   const categoryMap = engine.getToolsByCategory();
 
-  const categoryChoices = CATEGORY_ORDER.filter((c) => categoryMap.has(c)).map(
-    (c) => ({
-      name: CATEGORY_LABELS[c] ?? c,
-      value: c,
-      hint: `(${categoryMap.get(c)!.length} tools)`,
-    })
-  );
-
   const selectedCategory = await promptSelect(
     "What area are you working in?",
-    categoryChoices
+    CATEGORY_ORDER.filter((c) => categoryMap.has(c)).map((c) => ({
+      name: CATEGORY_LABELS[c] ?? c,
+      value: c,
+      description: `${categoryMap.get(c)!.length} tools`,
+    }))
   );
 
   if (!selectedCategory) {
@@ -89,15 +74,13 @@ async function guidedMode(engine: SearchEngine): Promise<void> {
 
   const tools = categoryMap.get(selectedCategory) ?? [];
 
-  const toolChoices = tools.map((t) => ({
-    name: t.tool,
-    value: t.tool,
-    hint: t.description,
-  }));
-
   const selectedTool = await promptSelect(
     `Which ${CATEGORY_LABELS[selectedCategory]} tool?`,
-    toolChoices
+    tools.map((t) => ({
+      name: t.tool,
+      value: t.tool,
+      description: t.description,
+    }))
   );
 
   if (!selectedTool) {
@@ -106,19 +89,14 @@ async function guidedMode(engine: SearchEngine): Promise<void> {
   }
 
   const tool = tools.find((t) => t.tool === selectedTool);
-  if (tool) {
-    renderToolCard(tool);
-  }
+  if (tool) renderToolCard(tool);
 }
 
-async function intentMode(
-  query: string,
-  engine: SearchEngine
-): Promise<void> {
+async function intentMode(query: string, engine: SearchEngine): Promise<void> {
   const allIntents = engine.getAllIntents();
 
   const selected = await promptAutocomplete(
-    `howdoi ${chalk.dim("→")} ${query}`,
+    `howdoi → ${query}`,
     allIntents
   );
 
@@ -151,16 +129,33 @@ async function intentMode(
 async function listMode(engine: SearchEngine): Promise<void> {
   renderWelcome();
   const categoryMap = engine.getToolsByCategory();
-
   for (const cat of CATEGORY_ORDER) {
     const tools = categoryMap.get(cat);
     if (!tools) continue;
     renderCategoryHeader(CATEGORY_LABELS[cat] ?? cat);
-    for (const tool of tools) {
-      renderToolLine(tool);
-    }
+    for (const tool of tools) renderToolLine(tool);
     console.log();
   }
+}
+
+function printHelp(): void {
+  console.log();
+  console.log(chalk.bold.white("  howdoi") + "  — Unix & Git command discovery");
+  console.log();
+  console.log("  " + chalk.bold("Usage"));
+  console.log(`    ${chalk.green("howdoi")}                    ${chalk.dim("guided category browser")}`);
+  console.log(`    ${chalk.green("howdoi")} ${chalk.yellow("<intent>")}          ${chalk.dim("fuzzy search with autocomplete")}`);
+  console.log(`    ${chalk.green("howdoi")} ${chalk.yellow("<tool>")}            ${chalk.dim("show all examples for a tool directly")}`);
+  console.log(`    ${chalk.green("howdoi")} ${chalk.yellow("--list")}            ${chalk.dim("list every available tool")}`);
+  console.log();
+  console.log("  " + chalk.bold("Examples"));
+  console.log(`    ${chalk.green("howdoi")}`);
+  console.log(`    ${chalk.green("howdoi")} search for text in file`);
+  console.log(`    ${chalk.green("howdoi")} delete folder`);
+  console.log(`    ${chalk.green("howdoi")} undo last commit`);
+  console.log(`    ${chalk.green("howdoi")} grep`);
+  console.log(`    ${chalk.green("howdoi")} --list`);
+  console.log();
 }
 
 async function main(): Promise<void> {
@@ -185,7 +180,6 @@ async function main(): Promise<void> {
 
   const query = args.join(" ").trim();
 
-  // Exact tool name match → show all examples directly, no prompt
   const exactTool = tools.find(
     (t) => t.tool.toLowerCase() === query.toLowerCase()
   );
@@ -194,28 +188,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  // Otherwise → autocomplete intent selection
   await intentMode(query, engine);
-}
-
-function printHelp(): void {
-  console.log();
-  console.log(chalk.bold.white("  howdoi") + "  — Unix & Git command discovery");
-  console.log();
-  console.log("  " + chalk.bold("Usage"));
-  console.log(`    ${chalk.green("howdoi")}                    ${chalk.dim("guided category browser")}`);
-  console.log(`    ${chalk.green("howdoi")} ${chalk.yellow("<intent>")}          ${chalk.dim("fuzzy search with autocomplete")}`);
-  console.log(`    ${chalk.green("howdoi")} ${chalk.yellow("<tool>")}            ${chalk.dim("show all examples for a tool directly")}`);
-  console.log(`    ${chalk.green("howdoi")} ${chalk.yellow("--list")}            ${chalk.dim("list every available tool")}`);
-  console.log();
-  console.log("  " + chalk.bold("Examples"));
-  console.log(`    ${chalk.green("howdoi")}`);
-  console.log(`    ${chalk.green("howdoi")} search for text in file`);
-  console.log(`    ${chalk.green("howdoi")} delete folder`);
-  console.log(`    ${chalk.green("howdoi")} undo last commit`);
-  console.log(`    ${chalk.green("howdoi")} grep`);
-  console.log(`    ${chalk.green("howdoi")} --list`);
-  console.log();
 }
 
 main().catch((err) => {

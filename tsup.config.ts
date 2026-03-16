@@ -13,10 +13,7 @@ export default defineConfig({
   clean: true,
   minify: false,
   bundle: true,
-  // Keep CJS modules that use dynamic require() as externals —
-  // tsup cannot safely bundle them into ESM
-  external: ["enquirer"],
-  noExternal: [/^(?!enquirer).*/],
+  external: ["@inquirer/prompts"],
   onSuccess: async () => {
     cpSync("data", "dist/data", { recursive: true });
     console.log("✓ Copied data/ → dist/data/");
