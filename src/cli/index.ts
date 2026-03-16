@@ -12,25 +12,27 @@ import chalk from "chalk";
 import { select, search } from "@inquirer/prompts";
 
 async function promptAutocomplete(
-  message: string,
   engine: SearchEngine,
   initialQuery: string
 ): Promise<string | null> {
   try {
     const result = await search<string>({
-      message,
-      // @inquirer/prompts calls source() on every keystroke with the current input
-      // We use the engine's suggestIntents() which is fuse-powered — real-time fuzzy matching
+      message: "howdoi →",
       source: (input) => {
-        const query = input ?? initialQuery;
-        return engine.suggestIntents(query).map((intent) => ({
-          name: intent,
-          value: intent,
-        }));
+        const query = (input ?? initialQuery).trim();
+        const suggestions = engine.suggestIntents(query);
+
+        // Always return something — fall back to top 10 so the prompt never locks
+        const list = suggestions.length > 0
+          ? suggestions
+          : engine.getAllIntents().slice(0, 10);
+
+        return list.map((intent) => ({ name: intent, value: intent }));
       },
     });
     return result;
   } catch {
+    // Ctrl+C or ESC — fall back to direct search on the raw query
     return null;
   }
 }
@@ -40,7 +42,7 @@ async function promptSelect(
   choices: { name: string; value: string; description?: string }[]
 ): Promise<string | null> {
   try {
-    const result = await select({
+    return await select({
       message,
       choices: choices.map((c) => ({
         name: c.description ? `${c.name}  ${chalk.dim(c.description)}` : c.name,
@@ -48,7 +50,6 @@ async function promptSelect(
       })),
       pageSize: 12,
     });
-    return result;
   } catch {
     return null;
   }
@@ -94,14 +95,27 @@ async function guidedMode(engine: SearchEngine): Promise<void> {
 }
 
 async function intentMode(query: string, engine: SearchEngine): Promise<void> {
-  const selected = await promptAutocomplete(
-    `howdoi →`,
-    engine,
-    query
-  );
+  // First check if the raw query already has strong matches — if so skip the prompt
+  const directResults = engine.search(query);
+  const hasStrongMatch = directResults.length > 0 && directResults[0].score < 0.15;
+
+  let selected: string | null = null;
+
+  if (hasStrongMatch) {
+    // Good enough match — skip the prompt entirely
+    selected = query;
+  } else {
+    selected = await promptAutocomplete(engine, query);
+  }
 
   if (!selected) {
-    console.log(chalk.dim("\n  Bye!\n"));
+    // User cancelled — try direct search on the raw query anyway
+    const fallback = engine.search(query);
+    if (fallback.length === 0) {
+      renderNoResults(query);
+    } else {
+      renderToolCard(fallback[0].tool, fallback[0].matchedIntent);
+    }
     return;
   }
 
