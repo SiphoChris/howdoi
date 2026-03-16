@@ -68,7 +68,7 @@ For contributors or if you want to hack on it.
 **Requirements:** [Bun](https://bun.sh) ≥ 1.0
 
 ```bash
-git clone https://github.com/your-username/howdoi-cli.git
+git clone https://github.com/SiphoChris/howdoi-cli.git
 cd howdoi-cli
 bun install
 bun run build
