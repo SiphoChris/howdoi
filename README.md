@@ -33,7 +33,7 @@ $ howdoi find files modified recently
 Install once, use anywhere. The fastest experience — no network call on every run.
 
 ```bash
-npm install -g howdoi-cli
+npm install -g @howdoi-cli/cli
 ```
 
 Then just use it:
@@ -54,9 +54,9 @@ No install needed. npm downloads and runs it on demand.
 There will be a short delay on first run while npm fetches the package.
 
 ```bash
-npx howdoi-cli
-npx howdoi-cli search for string in file
-npx howdoi-cli undo last commit
+npx @howdoi-cli/cli
+npx @howdoi-cli/cli search for string in file
+npx @howdoi-cli/cli undo last commit
 ```
 
 ---

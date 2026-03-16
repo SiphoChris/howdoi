@@ -37,7 +37,7 @@ function getDataDir(): string {
   throw new Error(
     "Could not locate data directory.\n" +
       "If installing from source, run: bun run build\n" +
-      "Otherwise try reinstalling: npm install -g howdoi-cli"
+      "Otherwise try reinstalling: npm install -g @howdoi-cli/cli"
   );
 }
 

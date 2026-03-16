@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "howdoi-cli",
+      "name": "@howdoi-cli/cli",
       "dependencies": {
         "chalk": "^5.3.0",
         "enquirer": "^2.4.1",
