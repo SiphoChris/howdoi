@@ -12,6 +12,8 @@ intents:
   - drop stash
   - stash only certain files
   - stash with a message
+  - save work in progress
+  - shelve current changes
 examples:
   - intent: save changes temporarily
     title: Stash all uncommitted changes

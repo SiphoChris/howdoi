@@ -10,6 +10,11 @@ intents:
   - merge files
   - show line numbers in file
   - concatenate files
+  - read contents of a file
+  - read a file
+  - output file contents
+  - view file contents
+  - open file in terminal
 examples:
   - intent: print file contents
     title: Print the contents of a file
@@ -29,3 +34,9 @@ examples:
   - intent: show line numbers in file
     title: Print file with non-blank line numbers
     command: cat -b file.txt
+  - intent: read contents of a file
+    title: Read and print a file
+    command: cat file.txt
+  - intent: view file contents
+    title: View file with line numbers
+    command: cat -n file.txt

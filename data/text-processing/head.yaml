@@ -9,6 +9,8 @@ intents:
   - show first n lines
   - peek at file contents
   - read start of log file
+  - read beginning of file
+  - read top of file
 examples:
   - intent: show first lines of file
     title: Show the first 10 lines (default)

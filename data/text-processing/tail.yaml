@@ -12,6 +12,9 @@ intents:
   - stream file output
   - watch log file
   - live log output
+  - read end of file
+  - see bottom of file
+  - read last lines
 examples:
   - intent: show last lines of file
     title: Show the last 10 lines (default)

@@ -34,9 +34,9 @@ export class SearchEngine {
     // Tighter threshold for tool matching
     this.fuse = new Fuse(this.index, {
       keys: ["intent"],
-      threshold: 0.3,
-      distance: 80,
-      minMatchCharLength: 3,
+      threshold: 0.45,
+      distance: 100,
+      minMatchCharLength: 2,
       includeScore: true,
     });
 

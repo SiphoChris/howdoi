@@ -14,6 +14,13 @@ intents:
   - show one line commit history
   - see last n commits
   - view branch history
+  - see git logs
+  - git log
+  - show log
+  - view git log
+  - show git history
+  - see recent commits
+  - check commit history
 examples:
   - intent: see commit history
     title: Show full commit history

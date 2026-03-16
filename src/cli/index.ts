@@ -9,33 +9,7 @@ import {
 } from "../renderer/display.js";
 import { CATEGORY_LABELS, CATEGORY_ORDER } from "../engine/types.js";
 import chalk from "chalk";
-import { select, search } from "@inquirer/prompts";
-
-async function promptAutocomplete(
-  engine: SearchEngine,
-  initialQuery: string
-): Promise<string | null> {
-  try {
-    const result = await search<string>({
-      message: "howdoi →",
-      source: (input) => {
-        const query = (input ?? initialQuery).trim();
-        const suggestions = engine.suggestIntents(query);
-
-        // Always return something — fall back to top 10 so the prompt never locks
-        const list = suggestions.length > 0
-          ? suggestions
-          : engine.getAllIntents().slice(0, 10);
-
-        return list.map((intent) => ({ name: intent, value: intent }));
-      },
-    });
-    return result;
-  } catch {
-    // Ctrl+C or ESC — fall back to direct search on the raw query
-    return null;
-  }
-}
+import { select } from "@inquirer/prompts";
 
 async function promptSelect(
   message: string,
@@ -94,35 +68,11 @@ async function guidedMode(engine: SearchEngine): Promise<void> {
   if (tool) renderToolCard(tool);
 }
 
-async function intentMode(query: string, engine: SearchEngine): Promise<void> {
-  // First check if the raw query already has strong matches — if so skip the prompt
-  const directResults = engine.search(query);
-  const hasStrongMatch = directResults.length > 0 && directResults[0].score < 0.15;
-
-  let selected: string | null = null;
-
-  if (hasStrongMatch) {
-    // Good enough match — skip the prompt entirely
-    selected = query;
-  } else {
-    selected = await promptAutocomplete(engine, query);
-  }
-
-  if (!selected) {
-    // User cancelled — try direct search on the raw query anyway
-    const fallback = engine.search(query);
-    if (fallback.length === 0) {
-      renderNoResults(query);
-    } else {
-      renderToolCard(fallback[0].tool, fallback[0].matchedIntent);
-    }
-    return;
-  }
-
-  const results = engine.search(selected);
+function intentSearch(query: string, engine: SearchEngine): void {
+  const results = engine.search(query);
 
   if (results.length === 0) {
-    renderNoResults(selected);
+    renderNoResults(query);
     return;
   }
 
@@ -158,15 +108,16 @@ function printHelp(): void {
   console.log();
   console.log("  " + chalk.bold("Usage"));
   console.log(`    ${chalk.green("howdoi")}                    ${chalk.dim("guided category browser")}`);
-  console.log(`    ${chalk.green("howdoi")} ${chalk.yellow("<intent>")}          ${chalk.dim("fuzzy search with autocomplete")}`);
+  console.log(`    ${chalk.green("howdoi")} ${chalk.yellow("<intent>")}          ${chalk.dim("search by what you want to do")}`);
   console.log(`    ${chalk.green("howdoi")} ${chalk.yellow("<tool>")}            ${chalk.dim("show all examples for a tool directly")}`);
   console.log(`    ${chalk.green("howdoi")} ${chalk.yellow("--list")}            ${chalk.dim("list every available tool")}`);
   console.log();
   console.log("  " + chalk.bold("Examples"));
   console.log(`    ${chalk.green("howdoi")}`);
   console.log(`    ${chalk.green("howdoi")} search for text in file`);
-  console.log(`    ${chalk.green("howdoi")} delete folder`);
+  console.log(`    ${chalk.green("howdoi")} delete folder recursively`);
   console.log(`    ${chalk.green("howdoi")} undo last commit`);
+  console.log(`    ${chalk.green("howdoi")} follow log file live`);
   console.log(`    ${chalk.green("howdoi")} grep`);
   console.log(`    ${chalk.green("howdoi")} --list`);
   console.log();
@@ -187,6 +138,7 @@ async function main(): Promise<void> {
     return;
   }
 
+  // No args → guided browser
   if (args.length === 0) {
     await guidedMode(engine);
     return;
@@ -203,7 +155,8 @@ async function main(): Promise<void> {
     return;
   }
 
-  await intentMode(query, engine);
+  // Intent query → direct search, instant results
+  intentSearch(query, engine);
 }
 
 main().catch((err) => {
