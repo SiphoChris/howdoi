@@ -4,6 +4,7 @@ import type { ToolEntry, SearchResult } from "./types.js";
 interface IntentIndex {
   intent: string;
   tool: ToolEntry;
+  isExampleIntent: boolean; // true only if this phrase appears in examples
 }
 
 export class SearchEngine {
@@ -14,16 +15,21 @@ export class SearchEngine {
     this.index = [];
 
     for (const tool of tools) {
-      // Index the tool description itself as an intent
-      this.index.push({ intent: tool.description, tool });
+      // Collect the set of intents that actually tag examples
+      const exampleIntents = new Set(tool.examples.map((e) => e.intent));
 
-      // Index every declared intent phrase
+      // Index tool name and description for matching — but not as example intents
+      this.index.push({ intent: tool.tool, tool, isExampleIntent: false });
+      this.index.push({ intent: tool.description, tool, isExampleIntent: false });
+
+      // Index declared intent phrases
       for (const intent of tool.intents) {
-        this.index.push({ intent, tool });
+        this.index.push({
+          intent,
+          tool,
+          isExampleIntent: exampleIntents.has(intent),
+        });
       }
-
-      // Index the tool name itself
-      this.index.push({ intent: tool.tool, tool });
     }
 
     this.fuse = new Fuse(this.index, {
@@ -38,7 +44,7 @@ export class SearchEngine {
   search(query: string): SearchResult[] {
     const raw = this.fuse.search(query);
 
-    // Deduplicate by tool name — keep best score per tool
+    // Deduplicate by tool — keep best score per tool
     const seen = new Map<string, SearchResult>();
 
     for (const r of raw) {
@@ -48,7 +54,9 @@ export class SearchEngine {
       if (!seen.has(toolName) || score < (seen.get(toolName)!.score)) {
         seen.set(toolName, {
           tool: r.item.tool,
-          matchedIntent: r.item.intent,
+          // Only pass matchedIntent if it actually tags examples — otherwise
+          // renderToolCard will show all examples for the tool
+          matchedIntent: r.item.isExampleIntent ? r.item.intent : undefined,
           score,
         });
       }
@@ -57,8 +65,15 @@ export class SearchEngine {
     return Array.from(seen.values()).sort((a, b) => a.score - b.score);
   }
 
+  // Only expose real intent phrases in autocomplete — not descriptions or tool names
   getAllIntents(): string[] {
-    return [...new Set(this.index.map((i) => i.intent))].sort();
+    return [
+      ...new Set(
+        this.index
+          .filter((i) => i.isExampleIntent)
+          .map((i) => i.intent)
+      ),
+    ].sort();
   }
 
   getToolsByCategory(): Map<string, ToolEntry[]> {

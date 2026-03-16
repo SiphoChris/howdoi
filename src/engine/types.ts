@@ -14,7 +14,7 @@ export interface ToolEntry {
 
 export interface SearchResult {
   tool: ToolEntry;
-  matchedIntent: string;
+  matchedIntent: string | undefined; // undefined = show all examples
   score: number;
 }
 
