@@ -13,23 +13,24 @@ import { select, search } from "@inquirer/prompts";
 
 async function promptAutocomplete(
   message: string,
-  choices: string[]
+  engine: SearchEngine,
+  initialQuery: string
 ): Promise<string | null> {
   try {
-    const result = await search({
+    const result = await search<string>({
       message,
+      // @inquirer/prompts calls source() on every keystroke with the current input
+      // We use the engine's suggestIntents() which is fuse-powered — real-time fuzzy matching
       source: (input) => {
-        if (!input) return choices.slice(0, 10).map((c) => ({ name: c, value: c }));
-        const lower = input.toLowerCase();
-        return choices
-          .filter((c) => c.toLowerCase().includes(lower))
-          .slice(0, 10)
-          .map((c) => ({ name: c, value: c }));
+        const query = input ?? initialQuery;
+        return engine.suggestIntents(query).map((intent) => ({
+          name: intent,
+          value: intent,
+        }));
       },
     });
     return result;
   } catch {
-    // Ctrl+C
     return null;
   }
 }
@@ -93,11 +94,10 @@ async function guidedMode(engine: SearchEngine): Promise<void> {
 }
 
 async function intentMode(query: string, engine: SearchEngine): Promise<void> {
-  const allIntents = engine.getAllIntents();
-
   const selected = await promptAutocomplete(
-    `howdoi → ${query}`,
-    allIntents
+    `howdoi →`,
+    engine,
+    query
   );
 
   if (!selected) {
@@ -180,6 +180,7 @@ async function main(): Promise<void> {
 
   const query = args.join(" ").trim();
 
+  // Exact tool name → show all examples directly
   const exactTool = tools.find(
     (t) => t.tool.toLowerCase() === query.toLowerCase()
   );
