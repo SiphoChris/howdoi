@@ -51,10 +51,10 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-username/howdoi-cli"
+    "url": "https://github.com/SiphoChris/howdoi-cli"
   },
-  "homepage": "https://github.com/your-username/howdoi-cli#readme",
+  "homepage": "https://github.com/SiphoChris/howdoi-cli#readme",
   "bugs": {
-    "url": "https://github.com/your-username/howdoi-cli/issues"
+    "url": "https://github.com/SiphoChris/howdoi-cli/issues"
   }
 }
