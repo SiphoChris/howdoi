@@ -23,6 +23,7 @@ export const CATEGORY_LABELS: Record<string, string> = {
   "file-management": "File Management",
   "file-inspection": "File Inspection",
   git: "Git",
+  ssh: "SSH",
 };
 
 export const CATEGORY_ORDER = [
@@ -30,4 +31,5 @@ export const CATEGORY_ORDER = [
   "text-processing",
   "file-inspection",
   "git",
+  "ssh",
 ];

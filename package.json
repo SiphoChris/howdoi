@@ -1,6 +1,6 @@
 {
   "name": "@howdoi-cli/cli",
-  "version": "0.1.9",
+  "version": "0.2.9",
   "description": "Intent-based Unix & Git command discovery. Meet your terminal where you stand.",
   "type": "module",
   "bin": {
